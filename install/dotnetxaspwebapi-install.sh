@@ -126,7 +126,7 @@ cat <<EOF >/tmp/${var_project_name}/Program.cs
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello from your new Dotnet X ASP WebAPI LXC.  <p>Check /ftp.creds for FTP-user and Password</p> <p>Upload your project to the /var/www/html directory, overwriting this sample application.</p> <p>I hope you enjoy your new host! <i>Robert Burger</i></p>");
+app.MapGet("/", () => Results.Content("<html><body><h1>Hello from your new Dotnet X ASP WebAPI LXC.</h1><p>Check ~/ftp.creds for FTP-user and Password</p><p>Upload your project to the /var/www/html directory, overwriting this sample application.</p><p>I hope you enjoy your new host!</br><i>Robert Burger</i></p></body></html>", "text/html"));
 
 app.Run();
 EOF

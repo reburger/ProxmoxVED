@@ -173,7 +173,7 @@ EOF
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-app.MapGet("/", () => "<html><body><h1>Hello from your new Dotnet X ASP WebAPI LXC for project <b>${site}</b>.</h1><p>Check ~/ftp.creds for FTP-user and Password</p><p>Upload your project to the /var/www/${site} directory, overwriting this sample application.</p><p>I hope you enjoy your new host!</br><i>Robert Burger</i></p></body></html>");
+app.MapGet("/", () => Results.Content("<html><body><h1>Hello from your new Dotnet X ASP WebAPI LXC for project <b>${site}</b>.</h1><p>Check ~/ftp.creds for FTP-user and Password</p><p>Upload your project to the /var/www/${site} directory, overwriting this sample application.</p><p>I hope you enjoy your new host!</br><i>Robert Burger</i></p></body></html>", "text/html"));
 
 app.Run();
 EOF
