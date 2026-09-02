@@ -58,7 +58,7 @@ for ((i=1; i<=var_site_count; i++)); do
   var_name_ref="var_site_${i}_name"
   site_name="${!var_name_ref:-}"
   if [[ -z "$site_name" ]]; then
-    read -r -p "${TAB3}Enter assembly/project name for Site ${i} [default: ${default_site}]: " site_name
+    read -r -p "${TAB3}Enter entry assembly name (without .dll) for Site ${i} [default: ${default_site}]: " site_name
   fi
   site_name="$(echo "$site_name" | sed 's/[^a-zA-Z0-9._-]//g')"
   site_name="${site_name:-$default_site}"
@@ -196,7 +196,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/var/www/${site}
-ExecStart=/usr/bin/dotnet /var/www/${site}/${site}.dll
+ExecStart=/usr/bin/dotnet /var/www/${site}/${site}.dll --urls http://127.0.0.1:${i_port}
 Restart=always
 # Restart service after 10 seconds if the dotnet service crashes:
 RestartSec=10
