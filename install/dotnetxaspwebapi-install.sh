@@ -26,26 +26,29 @@ case "$var_dotnet_version" in
   2|10|10.0)
     DOTNET_PACKAGES="dotnet-sdk-10.0"
     DOTNET_DESC=".NET 10.0 SDK"
+    TARGET_FRAMEWORK="net10.0"
     ;;
   3|both|all)
     DOTNET_PACKAGES="dotnet-sdk-9.0 dotnet-sdk-10.0"
     DOTNET_DESC=".NET 9.0 & 10.0 SDK"
+    TARGET_FRAMEWORK="net10.0"
     ;;
   *)
     DOTNET_PACKAGES="dotnet-sdk-9.0"
     DOTNET_DESC=".NET 9.0 SDK"
+    TARGET_FRAMEWORK="net9.0"
     ;;
 esac
 
 msg_info "Installing Dependencies (${DOTNET_DESC})"
-$STD apt-get update
-$STD apt-get install -y \
+$STD apt update
+$STD apt install -y \
   ssh \
   software-properties-common
 
 $STD add-apt-repository -y ppa:dotnet/backports
-$STD apt-get update
-$STD apt-get install -y \
+$STD apt update
+$STD apt install -y \
   $DOTNET_PACKAGES \
   vsftpd \
   nginx
@@ -86,7 +89,7 @@ map \$http_connection \$connection_upgrade {
   default keep-alive;
 }
 server {
-  listen        80;
+  listen        80 default_server;
   server_name   ${var_project_name}.com *.${var_project_name}.com;
   location / {
       proxy_pass         http://127.0.0.1:5000/;
@@ -102,6 +105,35 @@ server {
 EOF
 systemctl reload nginx 2>/dev/null || systemctl restart -q nginx
 msg_ok "Nginx Server Created"
+
+msg_info "Creating Sample Application"
+mkdir -p /tmp/${var_project_name}
+cat <<EOF >/tmp/${var_project_name}/${var_project_name}.csproj
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>${TARGET_FRAMEWORK}</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>${var_project_name}</AssemblyName>
+  </PropertyGroup>
+
+</Project>
+EOF
+
+cat <<EOF >/tmp/${var_project_name}/Program.cs
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+app.MapGet("/", () => "Hello from your new Dotnet X ASP WebAPI LXC");
+
+app.Run();
+EOF
+
+DOTNET_CLI_TELEMETRY_OPTOUT=1 $STD dotnet publish /tmp/${var_project_name}/${var_project_name}.csproj -c Release -o /var/www/html
+rm -rf /tmp/${var_project_name}
+chown -R ftpuser:ftpuser /var/www/html
+msg_ok "Created Sample Application"
 
 msg_info "Creating Service"
 cat <<EOF >/etc/systemd/system/kestrel-aspnetapi.service
@@ -120,6 +152,7 @@ SyslogIdentifier=dotnet-${var_project_name}
 User=root
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=DOTNET_NOLOGO=true
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
 
 [Install]
 WantedBy=multi-user.target

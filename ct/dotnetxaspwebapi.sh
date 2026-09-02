@@ -39,8 +39,8 @@ function update_script() {
     exit
   fi
   msg_info "Updating ${APP} LXC"
-  $STD apt-get update
-  $STD apt-get -y upgrade
+  $STD apt update
+  $STD apt -y upgrade
   msg_ok "Updated successfully!"
   exit
 }
@@ -51,5 +51,5 @@ description
 
 msg_ok "Completed Successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW}Access it using the following IP:${CL}"
-echo -e "${GATEWAY}${BGN}${IP}:80${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}${CL}"
