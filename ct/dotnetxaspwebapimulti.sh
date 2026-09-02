@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Engine comes from community-scripts/core; this repo only ships the scripts.
+# Local checkout wins (COMMUNITY_SCRIPTS_CORE_DIR, else a sibling ../core), so a
+# fork/branch of core can be tested without touching this file.
+_cs_boot="${COMMUNITY_SCRIPTS_CORE_DIR:-$(dirname "${BASH_SOURCE[0]}")/../../core}/core/build.func"
+source "$_cs_boot" 2>/dev/null || source <(curl -fsSL "${COMMUNITY_SCRIPTS_CORE_URL:-https://raw.githubusercontent.com/community-scripts/core/main}/core/build.func")
+
+# Copyright (c) 2021-2026 community-scripts ORG
+# Author: Robert Burger
+# Credit: Adapted from dotnetaspwebapi by Kristian Skov
+# License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
+# Source: https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-9.0&tabs=linux-ubuntu
+
+APP="Dotnet X ASP Web API Multi"
+var_tags="${var_tags:-web;dotnet;multi}"
+var_cpu="${var_cpu:-2}"
+var_ram="${var_ram:-2048}"
+var_disk="${var_disk:-10}"
+var_os="${var_os:-ubuntu}"
+var_version="${var_version:-24.04}"
+var_unprivileged="${var_unprivileged:-0}"
+
+# Values the install script accepts up front (see "Application Settings").
+# Without the export they never reach the container.
+export var_dotnet_version="${var_dotnet_version:-}"
+export var_site_count="${var_site_count:-}"
+
+header_info "$APP"
+variables
+color
+catch_errors
+
+function update_script() {
+  header_info
+  check_container_storage
+  check_container_resources
+
+  if [[ ! -d /var/www ]]; then
+    msg_error "No ${APP} Installation Found!"
+    exit
+  fi
+  msg_info "Updating ${APP} LXC"
+  $STD apt update
+  $STD apt -y upgrade
+  msg_ok "Updated successfully!"
+  exit
+}
+
+start
+build_container
+description
+
+msg_ok "Completed Successfully!\n"
+echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:8080${CL}"
