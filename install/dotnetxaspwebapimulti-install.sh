@@ -214,6 +214,41 @@ EOF
 done
 msg_ok "Created Services"
 
+msg_info "Configuring Login Profile"
+cat <<'EOF' >/etc/profile.d/99-dotnet-sites.sh
+#!/bin/bash
+# Only run in interactive shells
+[[ $- != *i* ]] && return
+
+IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+IP="${IP:-localhost}"
+
+echo -e "\e[1;36m=== Dotnet X ASP WebAPI Multi-Site Status ===\e[0m"
+printf "  \e[1;34m%-22s %-34s %-12s %-10s\e[0m\n" "Assembly Name" "External Link" "Internal" "Status"
+printf "  \e[1;34m%-22s %-34s %-12s %-10s\e[0m\n" "----------------------" "----------------------------------" "------------" "----------"
+
+for service in /etc/systemd/system/kestrel-*.service; do
+  [ -f "$service" ] || continue
+  name=$(basename "$service" .service | sed 's/kestrel-//')
+  i_port=$(grep '127.0.0.1:' "$service" 2>/dev/null | head -n1 | sed -n 's/.*127\.0\.0\.1:\([0-9]*\).*/\1/p')
+  i_port="${i_port:-5000}"
+  e_port=$(grep 'listen ' "/etc/nginx/sites-available/$name" 2>/dev/null | head -n1 | sed -n 's/.*listen[[:space:]]*\([0-9]*\).*/\1/p')
+  e_port="${e_port:-80}"
+  status=$(systemctl is-active "kestrel-$name" 2>/dev/null)
+
+  if [ "$status" = "active" ]; then
+    status_fmt="\e[32mActive\e[0m"
+  else
+    status_fmt="\e[31m${status:-stopped}\e[0m"
+  fi
+
+  printf "  %-22s %-34s %-12s %b\n" "$name" "http://${IP}:${e_port}" "$i_port" "$status_fmt"
+done
+echo ""
+EOF
+chmod +x /etc/profile.d/99-dotnet-sites.sh
+msg_ok "Configured Login Profile"
+
 echo -e "\n${INFO}${YW}Configured .NET ASP WebAPI Applications:${CL}"
 printf "\n  ${BL}%-20s %-35s %-15s${CL}\n" "Assembly Name" "External Link" "Internal Port"
 printf "  ${BL}%-20s %-35s %-15s${CL}\n" "--------------------" "-----------------------------------" "---------------"
