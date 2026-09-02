@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 # Copyright (c) 2021-2026 community-scripts ORG
-# Author: Kristian Skov
+# Author: Robert Burger
+# Credit: Adapted from dotnetaspwebapi by Kristian Skov
 # License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
 # Source: https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-9.0&tabs=linux-ubuntu
 
@@ -125,7 +126,7 @@ cat <<EOF >/tmp/${var_project_name}/Program.cs
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello from your new Dotnet X ASP WebAPI LXC");
+app.MapGet("/", () => "Hello from your new Dotnet X ASP WebAPI LXC.  <p>Check /ftp.creds for FTP-user and Password</p> <p>Upload your project to the /var/www/html directory, overwriting this sample application.</p> <p>I hope you enjoy your new host! <i>Robert Burger</i></p>");
 
 app.Run();
 EOF
