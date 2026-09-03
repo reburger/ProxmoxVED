@@ -1,0 +1,67 @@
+{
+  "name": "Dotnet X ASP Web API",
+  "slug": "dotnetxaspwebapi",
+  "categories": [
+    20,
+    21
+  ],
+  "date_created": "2026-09-02",
+  "type": "ct",
+  "updateable": true,
+  "privileged": true,
+  "architectures": [
+    "amd64"
+  ],
+  "interface_port": 80,
+  "documentation": "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/linux-nginx",
+  "website": "https://dotnet.microsoft.com/apps/aspnet",
+  "repository": "https://github.com/dotnet/aspnetcore",
+  "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/dotnet.webp",
+  "description": "ASP.NET Core Web API container hosting environment on Ubuntu 24.04 with Nginx reverse proxy, Kestrel systemd services, vsftpd FTP deployment server, and built-in site management CLI utilities (add-dotnet-site, remove-dotnet-site, reset-dotnet-site).",
+  "install_methods": [
+    {
+      "type": "default",
+      "script": "ct/dotnetxaspwebapi.sh",
+      "resources": {
+        "cpu": 1,
+        "ram": 1024,
+        "hdd": 8,
+        "os": "Ubuntu",
+        "version": "24.04"
+      }
+    }
+  ],
+  "app_vars": [
+    {
+      "name": "var_dotnet_version",
+      "label": ".NET Version",
+      "type": "select",
+      "options": [
+        "9.0",
+        "10.0",
+        "Both"
+      ],
+      "default": "9.0"
+    },
+    {
+      "name": "var_project_name",
+      "label": "Project Assembly Name",
+      "type": "text",
+      "default": "default"
+    }
+  ],
+  "default_credentials": {
+    "username": "ftpuser",
+    "password": null
+  },
+  "notes": [
+    {
+      "text": "FTP credentials for uploading your published project are stored in ~/ftp.creds. Upload your release files directly to /var/www/html.",
+      "type": "info"
+    },
+    {
+      "text": "Includes CLI utilities: 'add-dotnet-site' to add more sites, 'remove-dotnet-site' to delete sites, and 'reset-dotnet-site <name>' to restart/status a site.",
+      "type": "info"
+    }
+  ]
+}

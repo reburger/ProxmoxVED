@@ -245,6 +245,9 @@ for service in /etc/systemd/system/kestrel-*.service; do
   printf "  %-22s %-34s %-12s %b\n" "$name" "http://${IP}:${e_port}" "$i_port" "$status_fmt"
 done
 echo ""
+echo -e "  \e[1;33mManage sites:\e[0m  add-dotnet-site | remove-dotnet-site | reset-dotnet-site <name>"
+echo -e "  \e[1;36mDocumentation:\e[0m https://github.com/community-scripts/ProxmoxVED/blob/main/docs/guides/dotnetxaspwebapimulti.md"
+echo ""
 EOF
 chmod +x /etc/profile.d/99-dotnet-sites.sh
 msg_ok "Configured Login Profile"

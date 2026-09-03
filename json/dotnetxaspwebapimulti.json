@@ -1,0 +1,71 @@
+{
+  "name": "Dotnet X ASP Web API Multi",
+  "slug": "dotnetxaspwebapimulti",
+  "categories": [
+    20,
+    21
+  ],
+  "date_created": "2026-09-02",
+  "type": "ct",
+  "updateable": true,
+  "privileged": true,
+  "architectures": [
+    "amd64"
+  ],
+  "interface_port": 8080,
+  "documentation": "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/linux-nginx",
+  "website": "https://dotnet.microsoft.com/apps/aspnet",
+  "repository": "https://github.com/dotnet/aspnetcore",
+  "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/dotnet.webp",
+  "description": "Multi-site ASP.NET Core Web API container hosting environment on Ubuntu 24.04 with Nginx reverse proxy, individual Kestrel systemd services, vsftpd FTP deployment server, interactive login status dashboard, and CLI site management utilities.",
+  "install_methods": [
+    {
+      "type": "default",
+      "script": "ct/dotnetxaspwebapimulti.sh",
+      "resources": {
+        "cpu": 2,
+        "ram": 2048,
+        "hdd": 10,
+        "os": "Ubuntu",
+        "version": "24.04"
+      }
+    }
+  ],
+  "app_vars": [
+    {
+      "name": "var_dotnet_version",
+      "label": ".NET Version",
+      "type": "select",
+      "options": [
+        "9.0",
+        "10.0",
+        "Both"
+      ],
+      "default": "9.0"
+    },
+    {
+      "name": "var_site_count",
+      "label": "Number of Initial Sites",
+      "type": "number",
+      "default": 2
+    }
+  ],
+  "default_credentials": {
+    "username": "ftpuser",
+    "password": null
+  },
+  "notes": [
+    {
+      "text": "FTP credentials for uploading your published projects are stored in ~/ftp.creds. Upload to /var/www/<site_name>.",
+      "type": "info"
+    },
+    {
+      "text": "Includes CLI utilities: 'add-dotnet-site' to add more sites, 'remove-dotnet-site' to delete sites, and 'reset-dotnet-site <name>' to restart/status a site.",
+      "type": "info"
+    },
+    {
+      "text": "Each interactive console login displays a dynamic status table of all configured ASP.NET Core sites and their current systemd health.",
+      "type": "info"
+    }
+  ]
+}
