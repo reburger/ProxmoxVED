@@ -17,7 +17,7 @@
   "website": "https://dotnet.microsoft.com/apps/aspnet",
   "repository": "https://github.com/dotnet/aspnetcore",
   "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/dotnet.webp",
-  "description": "Multi-site ASP.NET Core Web API container hosting environment on Ubuntu 24.04 with Nginx reverse proxy, individual Kestrel systemd services, vsftpd FTP deployment server, interactive login status dashboard, and CLI site management utilities.",
+  "description": "Multi-site ASP.NET Core Web API container hosting environment on Ubuntu 24.04 with Nginx reverse proxy, individual Kestrel systemd services, vsftpd FTP deployment server, interactive login status dashboard, and CLI site management utilities (add-dotnet-site, remove-dotnet-site, reset-dotnet-site, rename-dotnet-site).",
   "install_methods": [
     {
       "type": "default",
@@ -60,7 +60,7 @@
       "type": "info"
     },
     {
-      "text": "Includes CLI utilities: 'add-dotnet-site' to add more sites, 'remove-dotnet-site' to delete sites, and 'reset-dotnet-site <name>' to restart/status a site.",
+      "text": "Includes CLI utilities: 'add-dotnet-site' to add more sites, 'remove-dotnet-site' to delete sites, 'rename-dotnet-site' to change a site's assembly name, and 'reset-dotnet-site <name>' to restart/status a site.",
       "type": "info"
     },
     {

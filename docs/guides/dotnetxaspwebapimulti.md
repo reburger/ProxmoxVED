@@ -16,6 +16,7 @@ The **Dotnet X ASP Web API Multi** script creates a consolidated, multi-tenant U
 - **Built-in CLI Management Suite (`/usr/local/bin/`)**:
   - `add-dotnet-site`: Interactively adds, scaffolds, compiles, reverse-proxies, and starts an additional ASP.NET Core application.
   - `remove-dotnet-site`: Interactively selects, confirms, and tears down an existing site (stops service, deletes Nginx reverse proxy, and optionally removes files).
+  - `rename-dotnet-site`: Renames an existing site to a new entry assembly name, updating directory, Nginx, and systemd service.
   - `reset-dotnet-site`: Restarts and checks the live status of any hosted application.
 
 ---
@@ -158,7 +159,30 @@ remove-dotnet-site CircuitDex
 
 ---
 
-### 3. `reset-dotnet-site`
+### 3. `rename-dotnet-site`
+Renames an existing site to a new entry assembly name.
+
+```bash
+# Interactive selection:
+rename-dotnet-site
+
+# Or with arguments:
+rename-dotnet-site OldName NewName
+```
+
+**What it does:**
+- Allows selection from an enumerated list of configured sites.
+- Prompts for the new entry assembly name (without `.dll`).
+- Stops and disables the old service: `kestrel-<old_name>`.
+- Renames the site directory: `/var/www/<old_name>` -> `/var/www/<new_name>`.
+- Automatically renames matching binary files (`.dll`, `.pdb`, `.deps.json`, `.runtimeconfig.json`) if present, keeping the application runnable immediately.
+- Updates `/etc/nginx/sites-available/<new_name>` preserving the existing external port (e.g. 8080, 8081, 8082), and reloads Nginx.
+- Creates and enables `kestrel-<new_name>.service` preserving the existing internal port (e.g. 5000, 5001, 5002).
+- Updates `ftpuser:ftpuser` permissions and updates the login status table.
+
+---
+
+### 4. `reset-dotnet-site`
 Stops, starts, and checks the status of an application.
 
 ```bash
@@ -184,6 +208,9 @@ On every console or SSH login, `/etc/profile.d/99-dotnet-sites.sh` dynamically s
   TrackMyTracksBlazor    http://192.168.1.150:8080          5000         Active    
   CircuitDex             http://192.168.1.150:8081          5001         Active    
   GlassyEyes.Web         http://192.168.1.150:8082          5002         Active    
+
+  Manage sites:  add-dotnet-site | remove-dotnet-site | rename-dotnet-site | reset-dotnet-site <name>
+  Documentation: https://github.com/community-scripts/ProxmoxVED/blob/main/docs/guides/dotnetxaspwebapimulti.md
 ```
 
 ---

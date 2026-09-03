@@ -198,9 +198,9 @@ for service in /etc/systemd/system/kestrel-*.service; do
   fi
 
   printf "  %-22s %-34s %-12s %b\n" "$name" "http://${IP}:${e_port}" "$i_port" "$status_fmt"
-done
+done | sort -t: -k3,3n
 echo ""
-echo -e "  \e[1;33mManage sites:\e[0m  add-dotnet-site | remove-dotnet-site | reset-dotnet-site <name>"
+echo -e "  \e[1;33mManage sites:\e[0m  add-dotnet-site | remove-dotnet-site | rename-dotnet-site | reset-dotnet-site <name>"
 echo -e "  \e[1;36mDocumentation:\e[0m https://github.com/community-scripts/ProxmoxVED/blob/main/docs/guides/dotnetxaspwebapi.md"
 echo ""
 EOF
@@ -556,11 +556,209 @@ EOF
 chmod +x /usr/local/bin/reset-dotnet-site
 msg_ok "Installed Site Reset Utility (reset-dotnet-site)"
 
+msg_info "Installing Site Rename Utility"
+cat <<'EOF' >/usr/local/bin/rename-dotnet-site
+#!/usr/bin/env bash
+# rename-dotnet-site - Helper utility to rename an existing ASP.NET Core site to a new assembly name
+set -euo pipefail
+
+if [[ $EUID -ne 0 ]]; then
+  echo -e "\e[31mThis script must be run as root.\e[0m" >&2
+  exit 1
+fi
+
+echo -e "\e[1;36m=== Rename ASP.NET Core Web API Site ===\e[0m\n"
+
+SITES=()
+for svc in /etc/systemd/system/kestrel-*.service; do
+  [ -f "$svc" ] || continue
+  name=$(basename "$svc" .service | sed 's/kestrel-//')
+  if [ "$name" = "aspnetapi" ]; then
+    dll=$(grep 'ExecStart=' "$svc" 2>/dev/null | head -n1 | sed -n 's/.*\/var\/www\/[^\/]*\/\([^. ]*\)\.dll.*/\1/p')
+    name="${dll:-default}"
+  fi
+  SITES+=("$name")
+done
+
+if [[ ${#SITES[@]} -eq 0 ]]; then
+  echo -e "\e[33mNo configured .NET sites found.\e[0m"
+  exit 0
+fi
+
+old_name="${1:-}"
+
+if [[ -z "$old_name" ]]; then
+  echo "Available sites:"
+  for i in "${!SITES[@]}"; do
+    s="${SITES[$i]}"
+    e_port=$(grep 'listen ' "/etc/nginx/sites-available/$s" 2>/dev/null | head -n1 | sed -n 's/.*listen[[:space:]]*\([0-9]*\).*/\1/p' || echo "80")
+    echo "  $((i + 1))) $s (Port: $e_port)"
+  done
+  echo ""
+  read -r -p "Enter site name or number to rename: " choice
+  if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#SITES[@]} )); then
+    old_name="${SITES[$((choice - 1))]}"
+  else
+    old_name="$(echo "$choice" | sed 's/[^a-zA-Z0-9._-]//g')"
+  fi
+fi
+
+old_svc_file=""
+if [[ -f "/etc/systemd/system/kestrel-${old_name}.service" ]]; then
+  old_svc_file="/etc/systemd/system/kestrel-${old_name}.service"
+  old_svc_name="kestrel-${old_name}"
+elif [[ ("$old_name" == "default" || "$old_name" == "aspnetapi") && -f "/etc/systemd/system/kestrel-aspnetapi.service" ]]; then
+  old_svc_file="/etc/systemd/system/kestrel-aspnetapi.service"
+  old_svc_name="kestrel-aspnetapi"
+else
+  echo -e "\e[31mSite '${old_name}' not found.\e[0m" >&2
+  exit 1
+fi
+
+new_name="${2:-}"
+while true; do
+  if [[ -z "$new_name" ]]; then
+    read -r -p "Enter new entry assembly name for '${old_name}' (without .dll, e.g. NewApp.Web): " new_name
+  fi
+  new_name="$(echo "$new_name" | sed 's/[^a-zA-Z0-9._-]//g')"
+  if [[ -z "$new_name" ]]; then
+    echo -e "\e[31mNew assembly name cannot be empty.\e[0m"
+    new_name=""
+    continue
+  fi
+  if [[ "$new_name" == "$old_name" ]]; then
+    echo -e "\e[31mNew name must be different from the old name.\e[0m"
+    new_name=""
+    continue
+  fi
+  if [[ -d "/var/www/${new_name}" ]]; then
+    echo -e "\e[31mDirectory /var/www/${new_name} already exists. Please choose a different name.\e[0m"
+    new_name=""
+    continue
+  fi
+  if [[ -f "/etc/systemd/system/kestrel-${new_name}.service" ]]; then
+    echo -e "\e[31mService kestrel-${new_name}.service already exists. Please choose a different name.\e[0m"
+    new_name=""
+    continue
+  fi
+  break
+done
+
+echo -e "\n\e[33mRenaming '${old_name}' -> '${new_name}':\e[0m"
+echo "  - Service: kestrel-${old_name} -> kestrel-${new_name}"
+echo "  - Directory: /var/www/${old_name} -> /var/www/${new_name}"
+echo "  - Nginx: /etc/nginx/sites-available/${new_name}"
+read -r -p "Are you sure you want to proceed? [y/N]: " confirm
+if [[ ! "$confirm" =~ ^[yY]([eE][sS])?$ ]]; then
+  echo "Operation cancelled."
+  exit 0
+fi
+
+i_port=$(grep '127.0.0.1:' "$old_svc_file" 2>/dev/null | head -n1 | sed -n 's/.*127\.0\.0\.1:\([0-9]*\).*/\1/p')
+i_port="${i_port:-5000}"
+
+old_dir=$(grep 'WorkingDirectory=' "$old_svc_file" 2>/dev/null | head -n1 | cut -d= -f2)
+old_dir="${old_dir:-/var/www/${old_name}}"
+
+e_port="80"
+if [[ -f "/etc/nginx/sites-available/${old_name}" ]]; then
+  e_port=$(grep 'listen ' "/etc/nginx/sites-available/${old_name}" 2>/dev/null | head -n1 | sed -n 's/.*listen[[:space:]]*\([0-9]*\).*/\1/p' || echo "80")
+elif [[ -f "/etc/nginx/sites-available/default" ]]; then
+  e_port=$(grep 'listen ' "/etc/nginx/sites-available/default" 2>/dev/null | head -n1 | sed -n 's/.*listen[[:space:]]*\([0-9]*\).*/\1/p' || echo "80")
+fi
+
+echo -e "\n\e[34m[Info]\e[0m Stopping old service ${old_svc_name}..."
+systemctl stop "$old_svc_name" 2>/dev/null || true
+systemctl disable "$old_svc_name" 2>/dev/null || true
+rm -f "$old_svc_file"
+
+new_dir="/var/www/${new_name}"
+echo -e "\e[34m[Info]\e[0m Renaming directory: ${old_dir} -> ${new_dir}..."
+if [[ -d "$old_dir" ]]; then
+  mv "$old_dir" "$new_dir"
+else
+  mkdir -p "$new_dir"
+fi
+
+for ext in dll pdb deps.json runtimeconfig.json; do
+  if [[ -f "${new_dir}/${old_name}.${ext}" && ! -f "${new_dir}/${new_name}.${ext}" ]]; then
+    mv "${new_dir}/${old_name}.${ext}" "${new_dir}/${new_name}.${ext}" 2>/dev/null || true
+  fi
+done
+chown -R ftpuser:ftpuser "$new_dir" 2>/dev/null || true
+
+echo -e "\e[34m[Info]\e[0m Updating Nginx configuration..."
+rm -f "/etc/nginx/sites-enabled/${old_name}" "/etc/nginx/sites-available/${old_name}"
+if [[ "$old_name" == "default" || "$old_name" == "aspnetapi" ]]; then
+  rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
+fi
+
+cat <<EONGINX >"/etc/nginx/sites-available/${new_name}"
+server {
+  listen        ${e_port};
+  server_name   ${new_name}.com *.${new_name}.com localhost;
+  location / {
+      proxy_pass         http://127.0.0.1:${i_port}/;
+      proxy_http_version 1.1;
+      proxy_set_header   Upgrade \$http_upgrade;
+      proxy_set_header   Connection \$connection_upgrade;
+      proxy_set_header   Host \$host;
+      proxy_cache_bypass \$http_upgrade;
+      proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
+      proxy_set_header   X-Forwarded-Proto \$scheme;
+  }
+}
+EONGINX
+ln -sf "/etc/nginx/sites-available/${new_name}" "/etc/nginx/sites-enabled/${new_name}"
+nginx -t >/dev/null 2>&1
+systemctl reload nginx 2>/dev/null || systemctl restart nginx
+echo -e "\e[32m[OK]\e[0m Nginx updated."
+
+echo -e "\e[34m[Info]\e[0m Creating new systemd service kestrel-${new_name}..."
+cat <<EOSVC >"/etc/systemd/system/kestrel-${new_name}.service"
+[Unit]
+Description=.NET Web API App (${new_name}) running on Linux
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/${new_name}
+ExecStart=/usr/bin/dotnet /var/www/${new_name}/${new_name}.dll --urls http://127.0.0.1:${i_port}
+Restart=always
+# Restart service after 10 seconds if the dotnet service crashes:
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=dotnet-${new_name}
+User=root
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_NOLOGO=true
+Environment=ASPNETCORE_URLS=http://127.0.0.1:${i_port}
+
+[Install]
+WantedBy=multi-user.target
+EOSVC
+
+systemctl daemon-reload
+systemctl reset-failed 2>/dev/null || true
+systemctl enable --now "kestrel-${new_name}"
+echo -e "\e[32m[OK]\e[0m Service kestrel-${new_name} started."
+
+IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+IP="${IP:-localhost}"
+echo -e "\n\e[32mSuccessfully renamed site '${old_name}' to '${new_name}'!\e[0m"
+echo -e "  External Link: \e[1;36mhttp://${IP}:${e_port}\e[0m"
+echo -e "  Internal Port: \e[1;33m${i_port}\e[0m"
+echo -e "  Directory:     \e[1;37m/var/www/${new_name}\e[0m"
+echo -e "  Service:       \e[1;37mkestrel-${new_name}\e[0m"
+echo -e "\nUpload your published project to \e[1;37m/var/www/${new_name}\e[0m via FTP."
+EOF
+chmod +x /usr/local/bin/rename-dotnet-site
+msg_ok "Installed Site Rename Utility (rename-dotnet-site)"
+
 echo -e "\n${INFO}${YW}Configured .NET ASP WebAPI Applications:${CL}"
 printf "\n  ${BL}%-20s %-35s %-15s${CL}\n" "Assembly Name" "External Link" "Internal Port"
 printf "  ${BL}%-20s %-35s %-15s${CL}\n" "--------------------" "-----------------------------------" "---------------"
 printf "  %-20s %-35s %-15s\n\n" "${var_project_name}" "http://${LOCAL_IP}" "5000"
-echo -e "${INFO}${YW}Manage sites anytime: ${GN}add-dotnet-site${YW} | ${RD}remove-dotnet-site${YW} | ${BL}reset-dotnet-site${CL}\n"
+echo -e "${INFO}${YW}Manage sites anytime: ${GN}add-dotnet-site${YW} | ${RD}remove-dotnet-site${YW} | ${BL}rename-dotnet-site${YW} | ${GN}reset-dotnet-site${CL}\n"
 
 motd_ssh
 customize
